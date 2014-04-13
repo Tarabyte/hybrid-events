@@ -1,0 +1,31 @@
+{
+  "name": "hybrid-events",
+  "version": "0.0.1",
+  "description": "Hybrid events for Plain Old JavaScript Objects.",
+  "main": "events.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tarabyte/hybrid-events.git"
+  },
+  "keywords": [
+    "event",
+    "pojo"
+  ],
+  "author": "tarabyte",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Tarabyte/hybrid-events/issues"
+  },
+  "homepage": "https://github.com/Tarabyte/hybrid-events",
+  "devDependencies": {
+    "gulp": "^3.6.0",
+    "gulp-rename": "^1.2.0",
+    "gulp-uglify": "^0.2.1",
+    "gulp-qunit": "^0.3.3",
+    "gulp-size": "^0.3.0",
+    "gulp-jshint": "^1.5.3"
+  }
+}
