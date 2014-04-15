@@ -25,7 +25,15 @@
             this.$name = name;
         },
         
-        emitterProto = Emitter.prototype;
+        emitterProto = Emitter.prototype,
+        
+        /**
+         * @class Event implementation
+         */
+        Event = function(ctx, data) {
+            this.target = ctx;
+            this.data = data;    
+        };
     
     /**
      * Add callback to the storage.
@@ -116,7 +124,7 @@
             this.$events[name] = event = new Emitter(name, options);    
         }
         
-        event.toggle(callback, this.ctx);
+        return event.toggle(callback, this.ctx);
     };
     
     /**
@@ -145,10 +153,7 @@
                 return hub.sub(name, arg, options);        
             }
             else { //trigger mode
-                hub.pub(name, {
-                    target: this,
-                    data: arg
-                });    
+                hub.pub(name, new Event(this, arg));    
             }
         };
     }
