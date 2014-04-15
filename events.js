@@ -26,15 +26,35 @@
         },
         
         emitterProto = Emitter.prototype,
+        identity = function(x) {
+            return function() {return x;};
+        },
+        returnTrue = identity(true),
+        returnFalse = identity(false),
         
         /**
          * @class Event implementation
          */
         Event = function(ctx, data) {
-            this.target = ctx;
-            this.data = data;    
-        };
+            if(data instanceof Event) { //Update currentTarget
+                data.currentTarget = ctx;
+                return data;       
+            }
+            this.target = this.currentTarget = ctx;
+            this.data = data;
+            this.isPropagationStopped = returnFalse;
+            this.isImmediatePropagationStopped = returnFalse;
+        },
+        eventProto = Event.prototype;
     
+    eventProto.stopImmediatePropagation = function() {
+        this.isPropagationStopped = this.isImmediatePropagationStopped = returnTrue;    
+    };
+    
+    eventProto.stopPropagation = function() {
+        this.isPropagationStopped = returnTrue;    
+    };
+
     /**
      * Add callback to the storage.
      * Run setup/add logic.
@@ -97,14 +117,25 @@
      * Run callbacks.
      */
     emitterProto.fire = function(event) {
-        var callbacks = this.$callbacks;
+        var callbacks = this.$callbacks,
+            len = callbacks.length,
+            i = 0,
+            propagate = this.$options.propagate,
+            ctx = event.currentTarget;
         
-        if(callbacks.length) {
+        if(len) {
             callbacks = callbacks.slice(0); //create a copy;
             
-            callbacks.forEach(function(cb) {
-                cb.call(event.target, event);    
-            });    
+            while(i < len && !event.isImmediatePropagationStopped()) {
+                callbacks[i++].call(ctx, event);    
+            }
+        }
+        
+        if(propagate && !event.isPropagationStopped()) {
+            ctx = propagate.call(ctx);
+            if(ctx) {
+                ctx[this.$name](event);
+            }
         }
     };
     

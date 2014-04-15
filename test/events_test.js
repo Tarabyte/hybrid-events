@@ -129,3 +129,68 @@ test('custom options', function() {
     
 });
 
+test('event stop immediate propagation', function() {
+   var obj = { 
+       event: HybridEvent('event')
+   },
+        cb1 = function(event) {
+            ok(!event.isPropagationStopped(), 'propagation is not stopped');
+            ok(!event.isImmediatePropagationStopped(), 'immediate propagation is not stopped');
+            event.stopImmediatePropagation();
+            ok(event.isPropagationStopped(), 'propagation is stopped');
+            ok(event.isImmediatePropagationStopped(), 'immediate propagation is not stopped');
+       },
+       cb2 = function(event) {
+            ok(false, 'should never be called');       
+       };
+    
+    obj.event(cb1);
+    obj.event(cb2);
+    
+    obj.event();       
+});
+
+test('event propagate', function() {
+    expect(5);
+    var event = HybridEvent('event', {
+            propagate: function() {
+                return this.parent;
+            }
+        }),
+        obj = {
+            event: event,
+            parent: {
+                event: event,
+                parent: {
+                    event: event,
+                }
+            }
+        };
+    
+    var cb1 = function(event) {
+        ok(!event.isPropagationStopped(), 'event propagation is not stopped'); 
+    };
+    
+    var cb2 = function(event) {
+        ok(!event.isPropagationStopped(), 'event propagation is not stopped');
+        event.stopPropagation();
+        ok(event.isPropagationStopped(), 'propagation is stopped');
+    };
+    
+    var cb21 = function(event) {
+        ok(event.isPropagationStopped(), 'propagation is stopped');
+        ok(!event.isImmediatePropagationStopped(), 'still running immediate propagation');
+    };
+    
+    var cb3 = function(event) {
+        ok(false, 'should never be called');    
+    };
+    
+    obj.event(cb1);
+    obj.parent.event(cb2);
+    obj.parent.event(cb21);
+    obj.parent.parent.event(cb3);
+    
+    obj.event({data: 42});
+});
+
