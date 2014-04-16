@@ -1,58 +1,64 @@
 /*global window*/
-~function(win) {
-    /**
-     * @class PubSub implementation.
-     */
-    var Hub = function(ctx) {
-            this.$events = {};
+~function(win) {    
+    var hybridEventStr = 'HybridEvent',
+        key = hybridEventStr + Date.now(),
+        prototypeStr = 'prototype',
+        callbacksStr = 'callbacks',
+        eventsStr = 'events',
+        currentTargetStr = 'currentTarget',
+        optionsStr = 'options',
+        /**
+         * @class PubSub implementation.
+         */
+        Hub = function(ctx) {
+            this[eventsStr] = {};
             this.ctx = ctx;
         },
-        
-        key = 'HybridEventHub' + Date.now(),
-        
         getHub = function(ctx) {
             return ctx[key] || (ctx[key] = new Hub(ctx));
         },
-        hubProto = Hub.prototype,
+        hubProto = Hub[prototypeStr],
         
         /**
          * @class Storage for event callbacks.
          * Contains custom options.
          */
         Emitter = function(name, options) {
-            this.$callbacks = [];
-            this.$options = options || {};
-            this.$name = name;
+            this[callbacksStr] = [];
+            this[optionsStr] = options || {};
+            this.name = name;
         },
         
-        emitterProto = Emitter.prototype,
+        emitterProto = Emitter[prototypeStr],
         identity = function(x) {
             return function() {return x;};
         },
         returnTrue = identity(true),
         returnFalse = identity(false),
+        isPropagationStopped = 'isPropagationStopped',
+        isImmediatePropagationStopped = 'isImmediatePropagationStopped',
         
         /**
          * @class Event implementation
          */
         Event = function(ctx, data) {
             if(data instanceof Event) { //Update currentTarget
-                data.currentTarget = ctx;
+                data[currentTargetStr] = ctx;
                 return data;       
             }
-            this.target = this.currentTarget = ctx;
+            this.target = this[currentTargetStr] = ctx;
             this.data = data;
-            this.isPropagationStopped = returnFalse;
-            this.isImmediatePropagationStopped = returnFalse;
+            this[isPropagationStopped] = returnFalse;
+            this[isImmediatePropagationStopped] = returnFalse;
         },
-        eventProto = Event.prototype;
+        eventProto = Event[prototypeStr];
     
     eventProto.stopImmediatePropagation = function() {
-        this.isPropagationStopped = this.isImmediatePropagationStopped = returnTrue;    
+        this[isPropagationStopped] = this[isImmediatePropagationStopped] = returnTrue;    
     };
     
     eventProto.stopPropagation = function() {
-        this.isPropagationStopped = returnTrue;    
+        this[isPropagationStopped] = returnTrue;    
     };
 
     /**
@@ -61,11 +67,11 @@
      */
     emitterProto.add = function(callback, ctx) {
         var emitter = this,
-            callbacks = emitter.$callbacks,
-            options = emitter.$options,
+            callbacks = emitter[callbacksStr],
+            options = emitter[optionsStr],
             setup = options.setup,
             add = options.add,
-            name = emitter.$name,
+            name = emitter.name,
             callbacksNumber = callbacks.length;
         
         callbacks.push(callback);
@@ -86,7 +92,7 @@
      * Add or remove callback.
      */
     emitterProto.toggle = function(callback, ctx) {
-        return this[~this.$callbacks.indexOf(callback) ?'remove' : 'add'](callback, ctx);
+        return this[~this[callbacksStr].indexOf(callback) ?'remove' : 'add'](callback, ctx);
     };
     
     /**
@@ -94,10 +100,10 @@
      * Run remove/teardown logic.
      */
     emitterProto.remove = function(callback, ctx) {
-        var callbacks = this.$callbacks,
-            name = this.$name,
+        var callbacks = this[callbacksStr],
+            name = this.name,
             position = callbacks.indexOf(callback),
-            options = this.$options,
+            options = this[optionsStr],
             remove = options.remove,
             teardown = options.teardown;
         
@@ -117,24 +123,24 @@
      * Run callbacks.
      */
     emitterProto.fire = function(event) {
-        var callbacks = this.$callbacks,
+        var callbacks = this[callbacksStr],
             len = callbacks.length,
             i = 0,
-            propagate = this.$options.propagate,
-            ctx = event.currentTarget;
+            propagate = this[optionsStr].propagate,
+            ctx = event[currentTargetStr];
         
         if(len) {
             callbacks = callbacks.slice(0); //create a copy;
             
-            while(i < len && !event.isImmediatePropagationStopped()) {
+            while(i < len && !event[isImmediatePropagationStopped]()) {
                 callbacks[i++].call(ctx, event);    
             }
         }
         
-        if(propagate && !event.isPropagationStopped()) {
+        if(propagate && !event[isPropagationStopped]()) {
             ctx = propagate.call(ctx);
             if(ctx) {
-                ctx[this.$name](event);
+                ctx[this.name](event);
             }
         }
     };
@@ -149,10 +155,10 @@
      * @returns {Function} Unbinder function.
      */
     hubProto.sub = function(name, callback, options) {
-        var event = this.$events[name];
+        var event = this[eventsStr][name];
         
         if(!event) {
-            this.$events[name] = event = new Emitter(name, options);    
+            this[eventsStr][name] = event = new Emitter(name, options);    
         }
         
         return event.toggle(callback, this.ctx);
@@ -164,7 +170,7 @@
      * @param {Event} event - Event containing data, context etc
      */
     hubProto.pub = function(name, event) {
-        this.$events[name].fire(event);
+        this[eventsStr][name].fire(event);
     };
     
     /**
@@ -180,15 +186,10 @@
         return function(arg) {
             var hub = getHub(this);
             
-            if(typeof arg == 'function') { //bind|unbind mode
-                return hub.sub(name, arg, options);        
-            }
-            else { //trigger mode
-                hub.pub(name, new Event(this, arg));    
-            }
+            return typeof arg == 'function' ? hub.sub(name, arg, options) : hub.pub(name, new Event(this, arg));
         };
     }
     
-    win.HybridEvent = event; 
+    win[hybridEventStr] = event; 
     
 }(window);
